@@ -3,6 +3,9 @@ import { User } from "../../models/User";
 import { pool } from "../../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import 'dotenv/config'
+
+const secret_key = process.env.SECRET_KEY
 
 export const login = async (req: Request, res: Response) => {
   const { username, password }: User = req.body;
@@ -36,19 +39,26 @@ export const login = async (req: Request, res: Response) => {
     if (user.length === 0) {
       return res.json({ error: "Usuario o contraseña incorrectos" });
     } else {
+      //El password que se encuentra en la base de datos
       const storedPassword = user[0].password;
-
+      // Se verifica que la contraseña coincida con la de la BD
       bcrypt.compare(password, storedPassword, (err, isMatch) => {
         if (err || !isMatch) {
           const error = "Usuario o contraseña incorrectos";
           return handleLoginError(res, error);
         }
-
+        //Utilizamos el id para firmar el token
         const id = user[0].id;
-        const token = jwt.sign({ id }, "jwt-secret-key", { expiresIn: "1d" });
+        if(secret_key){
+          const token = jwt.sign({ id }, secret_key, { expiresIn: "1d" });
 
         res.cookie("token", token);
-        return res.json(result);
+        return res.json({user, token});
+        }else{
+          return res.status(500).json({
+            message: "Error: Secret key is undefined"
+          })
+        }
       });
     }
   } catch (error) {
@@ -86,21 +96,31 @@ export const register = async (req: Request, res: Response) => {
   }
 
   try {
-    const hashPassword = await new Promise<string>((resolve, reject) => {
-      bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(hash);
-        }
-      });
-    });
-    const result = await pool.query(
-      "INSERT INTO users (username, password) VALUES (?,?)",
-      [username, hashPassword]
-    );
+    const userExist = await pool.query("SELECT * from users WHERE username = ?", [
+      username,
+    ]);
 
-    res.json(result);
+    if(userExist){
+      return res.status(400).json({
+        error: "El usuario ya existe"
+      })
+    }else{
+      const hashPassword = await new Promise<string>((resolve, reject) => {
+        bcrypt.hash(password, 10, (err, hash) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(hash);
+          }
+        });
+      });
+      const result = await pool.query(
+        "INSERT INTO users (username, password) VALUES (?,?)",
+        [username, hashPassword]
+      );
+  
+      return res.json(result);
+    }
   } catch (error) {
     return res.status(500).json({
       message: error,

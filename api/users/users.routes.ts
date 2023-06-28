@@ -1,10 +1,10 @@
 import { NextFunction, Router, Request, Response } from "express";
 import { dashboard, login, register, logout } from "./users.controller";
-import jwt, { VerifyErrors } from "jsonwebtoken";
+import { auth } from "../../middlewares/auth";
 
 const router = Router();
 
-const verifyUser = (req: Request, res: Response, next: NextFunction) => {
+/* const verifyUser = (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies.token;
 
   if (!token) {
@@ -22,11 +22,11 @@ const verifyUser = (req: Request, res: Response, next: NextFunction) => {
       }
     );
   }
-};
+}; */
 
 router.post("/login", login);
 router.post("/logout", logout);
 router.post("/register", register);
-router.get("/dashboard", verifyUser, dashboard);
+router.get("/dashboard", auth, dashboard);
 
 export default router;

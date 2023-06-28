@@ -1,9 +1,10 @@
 export interface Exhibition {
     id?:number,
-    title:string,
+    name:string,
     participants:string,
     description:string,
-    duration:string,
-    place:string,
-    images?:string
+    start_date:string,
+    end_date:string,
+    virtual_route?:string,
+    images?:string,
 }

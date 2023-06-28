@@ -22,20 +22,26 @@ export const getExhibitions = async (req: Request, res: Response) => {
     return res.json(result);
   } catch (error) {
     return res.status(500).json({
-      message: error,
+      error: error,
     });
   }
 };
 
 export const createExhibition = async (req: Request, res: Response) => {
-  const { title, participants, description, duration, place }: Exhibition =
-    req.body;
-  /* Siempre se van a recibir las imágenes */
+  const {
+    name,
+    participants,
+    description,
+    start_date,
+    end_date,
+    virtual_route,
+  }: Exhibition = req.body;
+  /* Siempre se van a recibir las imágenes es validado por front */
   const images = req.files! as Image[];
   try {
     const exhibition = await pool.query(
-      "INSERT INTO exhibitions (title, participants, description, duration, place) VALUES (?,?,?,?,?)",
-      [title, participants, description, duration, place]
+      "INSERT INTO exhibitions (name, participants, description, start_date, end_date, virtual_route) VALUES (?,?,?,?,?,?)",
+      [name, participants, description, start_date, end_date, virtual_route]
     );
     //Obtenemos el ID del nuevo registro creado
     const exhibition_id: Number = (exhibition[0] as ResultSetHeader).insertId;
@@ -57,28 +63,42 @@ export const createExhibition = async (req: Request, res: Response) => {
       [exhibition_id]
     );
 
-    let result = JSON.parse(JSON.stringify(fetchExhibition[0]));
-    let parseImages = JSON.parse(JSON.stringify(fetchImages[0]));
-    result[0]["images"] = parseImages;
-    res.json(result);
+    let exhibition_result = JSON.parse(JSON.stringify(fetchExhibition[0]));
+    let images_result = JSON.parse(JSON.stringify(fetchImages[0]));
+    exhibition_result[0]["images"] = images_result;
+    res.json(exhibition_result);
   } catch (error) {
     return res.status(500).json({
-      message: error,
+      error: error,
     });
   }
 };
 
 export const editExhibition = async (req: Request, res: Response) => {
   const exhibition_id = req.params.id;
-  const { title, participants, description, duration, place }: Exhibition =
-    req.body;
+  const {
+    name,
+    participants,
+    description,
+    start_date,
+    end_date,
+    virtual_route,
+  }: Exhibition = req.body;
   const images = req.files as Image[];
 
   try {
     // Actualizar exhibición
     await pool.query(
-      "UPDATE exhibitions SET title = ?, participants = ?, description = ?, duration = ?, place = ? WHERE id = ?",
-      [title, participants, description, duration, place, exhibition_id]
+      "UPDATE exhibitions SET name = ?, participants = ?, description = ?, start_date = ?, end_date = ?, virtual_route = ? WHERE id = ?",
+      [
+        name,
+        participants,
+        description,
+        start_date,
+        end_date,
+        virtual_route,
+        exhibition_id,
+      ]
     );
 
     //Eliminar imágenes locales
@@ -113,66 +133,71 @@ export const editExhibition = async (req: Request, res: Response) => {
     res.json(result);
   } catch (error) {
     return res.status(500).json({
-      message: error,
+      error: error,
     });
   }
 };
-// Eliminar imágenes de la base de daos
-const deleteImagesFromDB = async (exhibition_id: number) => {
+// Eliminar imágenes de la base de datos
+const deleteImagesFromDB = async (exhibition_id: number, res?: Response) => {
   try {
     await pool.query(
       "DELETE FROM exhibitions_gallery WHERE exhibition_id = ?",
       [exhibition_id]
     );
   } catch (error) {
-    console.log("Error deleting exhibitions images from DB: ", error);
+    res!.status(500).json({
+      error: `Error deleting exhibitions images from DB: ${error}`,
+    });
   }
 };
 
 // Eliminar las imágenes existentes de la exhibición de forma local
-const deleteExhibitionImages = async (exhibition_id: number) => {
-
+const deleteExhibitionImages = async (
+  exhibition_id: number,
+  res?: Response
+) => {
   try {
-    
     const fetchImages = await pool.query(
       "SELECT image FROM exhibitions_gallery WHERE exhibition_id = ?",
       [exhibition_id]
     );
 
-    console.log(fetchImages);
     let images = JSON.parse(JSON.stringify(fetchImages[0]));
     for (const image of images) {
       const imagePath = `upload/images/${image.image}`;
-      
+
       fs.unlinkSync(imagePath);
     }
   } catch (error) {
-    console.error("Error deleting exhibition images:", error);
+    res!.status(500).json({
+      error: `Error deleting exhibitions images from local: ${error}`,
+    });
   }
 };
 
-export const deleteExhibition = async (req: Request, res:Response) => {
-  const exhibition_id = req.params.id;
+export const deleteExhibition = async (req: Request, res: Response) => {
+  const exhibition_id = parseInt(req.params.id);
   try {
     // Delete images from local directory
-    await deleteExhibitionImages(parseInt(exhibition_id));
+    await deleteExhibitionImages(exhibition_id);
     // Delete images from DB
-    await deleteImagesFromDB(parseInt(exhibition_id));
+    await deleteImagesFromDB(exhibition_id);
     // Delete exhibition
     await pool.query("DELETE FROM exhibitions WHERE id = ?", [
-      parseInt(exhibition_id),
+      exhibition_id,
     ]);
     res.status(200).json({
-      message: "Deleted successfully"
-    })
+      message: "Deleted successfully",
+    });
   } catch (error) {
-    console.log("Error deleting exhibition:", error);
+    res.status(500).json({
+      error: "Error deleting exhibition: " + error,
+    });
   }
 };
 
 export const getExhibition = async (req: Request, res: Response) => {
   const exhibition_id = req.params.id;
-  console.log(exhibition_id);
   try {
     const exhibition = await pool.query(
       "SELECT * FROM exhibitions WHERE id = ?",
@@ -191,7 +216,7 @@ export const getExhibition = async (req: Request, res: Response) => {
     res.json(result);
   } catch (error) {
     return res.status(500).json({
-      message: error,
+      error: "Error getting exhibition: " + error,
     });
   }
 };

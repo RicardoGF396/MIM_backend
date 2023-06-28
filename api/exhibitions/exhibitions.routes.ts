@@ -1,6 +1,4 @@
 import { Router } from "express";
-import multer from "multer";
-import path from "path";
 import {
   createExhibition,
   editExhibition,
@@ -8,26 +6,17 @@ import {
   getExhibition,
   deleteExhibition,
 } from "./exhibitions.controller";
-
-/* Se asigna la ruta a guardar de las imágenes */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'upload/images')
-  },
-  filename: (req, file, cb) => {
-      return cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`)
-  }
-});
-const upload = multer({
-  storage: storage,
-}).array('images');
+//Verifica que el usuario este autorizado para seguir con el siguiente middleware
+import { auth } from "../../middlewares/auth";
+//Permite subir imágenes a la carpeta local
+import {upload} from "../../utils/fileUpload";
 
 const router = Router();
 
-router.get("/exhibitions", getExhibitions);
-router.post("/create_exhibition", upload, createExhibition);
-router.put("/edit_exhibition/:id", upload, editExhibition);
-router.get("/get_exhibition/:id", getExhibition);
-router.delete("/delete_exhibition/:id", deleteExhibition);
+router.get("/", getExhibitions);
+router.get("/:id", getExhibition);
+router.post("/", auth, upload, createExhibition);
+router.put("/:id", auth, upload, editExhibition);
+router.delete("/:id", auth, deleteExhibition);
 
 export default router;
