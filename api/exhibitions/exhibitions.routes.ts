@@ -5,6 +5,7 @@ import {
   getExhibitions,
   getExhibition,
   deleteExhibition,
+  getExhibitionsByFilter,
 } from "./exhibitions.controller";
 //Verifica que el usuario este autorizado para seguir con el siguiente middleware
 import { auth } from "../../middlewares/auth";
@@ -15,6 +16,7 @@ const router = Router();
 
 router.get("/", getExhibitions);
 router.get("/:id", getExhibition);
+router.post("/filter", auth, getExhibitionsByFilter);
 router.post("/", auth, upload, createExhibition);
 router.put("/:id", auth, upload, editExhibition);
 router.delete("/:id", auth, deleteExhibition);

@@ -27,6 +27,38 @@ export const getExhibitions = async (req: Request, res: Response) => {
   }
 };
 
+export const getExhibitionsByFilter = async (req: Request, res: Response) => {
+  const { itemList, order, operator } = req.body;
+  let exhibitions: Array<object>;
+  try {
+    if (operator) {
+      exhibitions = await pool.query(
+        `
+          SELECT * FROM exhibitions WHERE room IN (?) 
+          AND end_date ${operator} CURDATE()          
+          ORDER BY start_date ${order} ;
+      `,
+        [itemList]
+      );
+    } else {
+      exhibitions = await pool.query(
+        `
+          SELECT * FROM exhibitions WHERE room 
+          IN (?)          
+          ORDER BY start_date ${order} ;
+      `,
+        [itemList]
+      );
+    }
+    const result = exhibitions[0];
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      error: error,
+    });
+  }
+};
+
 export const createExhibition = async (req: Request, res: Response) => {
   const {
     name,
@@ -34,18 +66,30 @@ export const createExhibition = async (req: Request, res: Response) => {
     description,
     start_date,
     end_date,
+    room,
     virtual_route,
-  }: Exhibition = req.body;
+  }: Exhibition = JSON.parse(req.body.exhibition);
   /* Siempre se van a recibir las imágenes es validado por front */
-  const images = req.files! as Image[];
+  const images = req.files as Image[];
+  console.log(JSON.parse(req.body.exhibition))
+  //console.log(images)
   try {
     const exhibition = await pool.query(
-      "INSERT INTO exhibitions (name, participants, description, start_date, end_date, virtual_route) VALUES (?,?,?,?,?,?)",
-      [name, participants, description, start_date, end_date, virtual_route]
+      "INSERT INTO exhibitions (name, participants, description, start_date, end_date, virtual_route, room) VALUES (?,?,?,?,?,?,?)",
+      [
+        name,
+        participants,
+        description,
+        start_date,
+        end_date,
+        virtual_route,
+        room,
+      ]
     );
     //Obtenemos el ID del nuevo registro creado
     const exhibition_id: Number = (exhibition[0] as ResultSetHeader).insertId;
-
+      console.log(exhibition_id);
+      
     // Iteramos en las imágenes para añadirlas a la base de datos
     for (const image of images) {
       await pool.query(
@@ -177,15 +221,14 @@ const deleteExhibitionImages = async (
 
 export const deleteExhibition = async (req: Request, res: Response) => {
   const exhibition_id = parseInt(req.params.id);
+  console.log(exhibition_id)
   try {
     // Delete images from local directory
     await deleteExhibitionImages(exhibition_id);
     // Delete images from DB
     await deleteImagesFromDB(exhibition_id);
     // Delete exhibition
-    await pool.query("DELETE FROM exhibitions WHERE id = ?", [
-      exhibition_id,
-    ]);
+    await pool.query("DELETE FROM exhibitions WHERE id = ?", [exhibition_id]);
     res.status(200).json({
       message: "Deleted successfully",
     });

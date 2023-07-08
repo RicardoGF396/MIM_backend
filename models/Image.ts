@@ -7,4 +7,5 @@ export interface Image {
     filename: string,
     path: string,
     size: number
+    name?: string
 }

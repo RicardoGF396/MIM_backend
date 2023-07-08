@@ -3,9 +3,7 @@ import { User } from "../../models/User";
 import { pool } from "../../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import 'dotenv/config'
-
-const secret_key = process.env.SECRET_KEY
+import "dotenv/config";
 
 export const login = async (req: Request, res: Response) => {
   const { username, password }: User = req.body;
@@ -49,18 +47,27 @@ export const login = async (req: Request, res: Response) => {
         }
         //Utilizamos el id para firmar el token
         const id = user[0].id;
-        if(secret_key){
-          const token = jwt.sign({ id }, secret_key, { expiresIn: "1d" });
-
-        res.cookie("token", token);
-        return res.json({user, token});
-        }else{
+        if (process.env.ACCESS_TOKEN_SECRET) {
+          const token = jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
+          return res.json({ user, token });
+        } else {
           return res.status(500).json({
-            message: "Error: Secret key is undefined"
-          })
+            message: "Error: Secret key is undefined",
+          });
         }
       });
     }
+  } catch (error) {
+    return res.status(500).json({
+      message: error,
+    });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    res.setHeader("access-token","");
+    return res.json({ Status: "Loged out" });
   } catch (error) {
     return res.status(500).json({
       message: error,
@@ -96,15 +103,16 @@ export const register = async (req: Request, res: Response) => {
   }
 
   try {
-    const userExist = await pool.query("SELECT * from users WHERE username = ?", [
-      username,
-    ]);
+    const userExist = await pool.query(
+      "SELECT * from users WHERE username = ?",
+      [username]
+    );
 
-    if(userExist){
+    if (userExist) {
       return res.status(400).json({
-        error: "El usuario ya existe"
-      })
-    }else{
+        error: "El usuario ya existe",
+      });
+    } else {
       const hashPassword = await new Promise<string>((resolve, reject) => {
         bcrypt.hash(password, 10, (err, hash) => {
           if (err) {
@@ -118,7 +126,7 @@ export const register = async (req: Request, res: Response) => {
         "INSERT INTO users (username, password) VALUES (?,?)",
         [username, hashPassword]
       );
-  
+
       return res.json(result);
     }
   } catch (error) {
@@ -130,17 +138,6 @@ export const register = async (req: Request, res: Response) => {
 
 export const dashboard = async (req: Request, res: Response) => {
   try {
-    return res.json({ Status: "Success" });
-  } catch (error) {
-    return res.status(500).json({
-      message: error,
-    });
-  }
-};
-
-export const logout = async (req: Request, res: Response) => {
-  try {
-    res.clearCookie("token");
     return res.json({ Status: "Success" });
   } catch (error) {
     return res.status(500).json({
