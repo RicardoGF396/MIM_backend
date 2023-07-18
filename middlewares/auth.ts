@@ -9,7 +9,6 @@ export const auth = async (req: any, res: Response, next: NextFunction) => {
         if(token){
             jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err: VerifyErrors | null, decoded: any) => {
                 if(err){
-                    console.log("ENTRO A ERR")
                     res.json({error: "Not authenticated"})
                 }else{
                     req.userId = decoded.id;

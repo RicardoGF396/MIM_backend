@@ -71,8 +71,7 @@ export const createExhibition = async (req: Request, res: Response) => {
   }: Exhibition = JSON.parse(req.body.exhibition);
   /* Siempre se van a recibir las imágenes es validado por front */
   const images = req.files as Image[];
-  console.log(JSON.parse(req.body.exhibition))
-  //console.log(images)
+  //console.log(JSON.parse(req.body.exhibition))
   try {
     const exhibition = await pool.query(
       "INSERT INTO exhibitions (name, participants, description, start_date, end_date, virtual_route, room) VALUES (?,?,?,?,?,?,?)",
@@ -120,6 +119,7 @@ export const createExhibition = async (req: Request, res: Response) => {
 
 export const editExhibition = async (req: Request, res: Response) => {
   const exhibition_id = req.params.id;
+
   const {
     name,
     participants,
@@ -127,13 +127,14 @@ export const editExhibition = async (req: Request, res: Response) => {
     start_date,
     end_date,
     virtual_route,
-  }: Exhibition = req.body;
+    room,
+  }: Exhibition = JSON.parse(req.body.exhibition);
   const images = req.files as Image[];
-
+  console.log(images) 
   try {
     // Actualizar exhibición
     await pool.query(
-      "UPDATE exhibitions SET name = ?, participants = ?, description = ?, start_date = ?, end_date = ?, virtual_route = ? WHERE id = ?",
+      "UPDATE exhibitions SET name = ?, participants = ?, description = ?, start_date = ?, end_date = ?, virtual_route = ?, room = ? WHERE id = ?",
       [
         name,
         participants,
@@ -141,6 +142,7 @@ export const editExhibition = async (req: Request, res: Response) => {
         start_date,
         end_date,
         virtual_route,
+        room,
         exhibition_id,
       ]
     );
@@ -248,7 +250,7 @@ export const getExhibition = async (req: Request, res: Response) => {
     );
 
     const exhibition_images = await pool.query(
-      `SELECT id,CONCAT('${DB_URL}/upload/',image) as url FROM exhibitions_gallery WHERE exhibition_id = ?`,
+      `SELECT id, image as name,CONCAT('${DB_URL}/upload/',image) as url FROM exhibitions_gallery WHERE exhibition_id = ?`,
       [exhibition_id]
     );
 
